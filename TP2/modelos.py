@@ -137,6 +137,9 @@ print("Similaridade:", similarities[0][most_similar_index])
 # Resultados
 
 '''
+Query = "Comida para animais de estimação"
+
+
 Modelo TF-IDF:
 ID: 305570
 Nota: ALTERA A PORTARIA NUMERO 575/93, DE 4 DE JUNHO (APROVA O REGULAMENTO DOS CONTROLOS VETERINÁRIOS E ZOOTÉCNICOS,
@@ -147,4 +150,9 @@ Modelo Word2Vec:
 ID: 274171
 Nota: Estabelece o regime de importação de alimentos compostos para animais à base de cereais.
 Similaridade: 0.5621504490290059
+
+Modelo BERT:
+ID: 6283
+Nota: Matérias-primas para alimentação animal
+Similaridade: 0.6871314
 '''
