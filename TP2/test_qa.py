@@ -15,6 +15,12 @@ def calculate_similarity(answer, expected_answer):
     csim = cosine_similarity(vectors)
     return csim[0][1]
 
+# Função para escrever resultados em um arquivo de texto
+def write_results_to_file(filename, results):
+    with open(filename, 'w', encoding='utf-8') as f:
+        for result in results:
+            f.write(result + '\n')
+
 def main():
     # Exemplos de textos do Diário da República
     texto_1 = """
@@ -62,25 +68,30 @@ def main():
         "mrm8488/distilbert-multi-finedtuned-squad-pt",
         "ArthurBaia/xlm-roberta-base-squad-pt",
         "lfcc/bert-portuguese-squad2"
-        
     ]
+
+    # Lista para armazenar os resultados
+    results = []
 
     # Aplicar question answering nos textos e avaliar
     for i, (texto, qa_pair) in enumerate(zip(textos, qa_pairs)):
-        print(f"\nTexto {i+1}:\n{texto}\n")
+        results.append(f"\nTexto {i+1}:\n{texto}\n")
         for model_name in models:
-            print(f"Resultados para o modelo: {model_name}\n")
+            results.append(f"Resultados para o modelo: {model_name}\n")
             total_score = 0
             for question, expected_answer in qa_pair:
                 try:
                     answer = apply_qa_model(model_name, texto, question)
                     score = calculate_similarity(answer, expected_answer)
                     total_score += score
-                    print(f"Q: {question}\nA: {answer}\nEsperado: {expected_answer}\nScore: {score:.2f}\n")
+                    results.append(f"Q: {question}\nA: {answer}\nEsperado: {expected_answer}\nScore: {score:.2f}\n")
                 except Exception as e:
-                    print(f"Erro ao usar o modelo {model_name}: {e}")
+                    results.append(f"Erro ao usar o modelo {model_name}: {e}\n")
             avg_score = total_score / len(qa_pair)
-            print(f"Pontuação média para o modelo {model_name}: {avg_score:.2f}\n")
+            results.append(f"Pontuação média para o modelo {model_name}: {avg_score:.2f}\n")
+
+    # Escrever resultados em um arquivo de texto
+    write_results_to_file('resultados_qa.txt', results)
 
 if __name__ == "__main__":
     main()
