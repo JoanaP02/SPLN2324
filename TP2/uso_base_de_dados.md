@@ -44,7 +44,7 @@ SELECT * FROM dreapp_documenttext LIMIT 10;
 #### e. Selecionar linha com id = :
 
 ```sql
-SELECT COUNT(*) FROM dreapp_documenttext WHERE document_id = 606642;
+SELECT COUNT(*) FROM dreapp_documenttext WHERE document_id = 103313;
 ```
 
 ### 5. Sair do cliente `sqlite3`:
