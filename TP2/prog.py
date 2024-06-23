@@ -14,13 +14,13 @@ parser.add_argument('query', type=str, nargs='?', default='', help='Query to pro
 parser.add_argument('--create_database', action='store_true', help='Create the database')
 
 # Add the --create_models flag
-parser.add_argument('--create_models', nargs='+', help='Create the pre-trained models', default=available_models)
+parser.add_argument('--create_models', nargs='+', help='Create the pre-trained models')
 
 # Add the --list_models flag
 parser.add_argument('-lm', '--list_models', action='store_true', help='List available models')
 
 # Add the --models flag with -m as a shortcut
-parser.add_argument('-m', '--models', nargs='+', help='Models to use', default=available_models)
+parser.add_argument('-m', '--models', nargs='+', default=available_models, help='Models to use')
 
 # Parse the arguments
 args = parser.parse_args()
@@ -40,10 +40,13 @@ if args.create_database:
 # If --create_models is specified, create the models and exit
 if args.create_models:
     models = args.create_models
-    main.create_models()
+    main.create_models(models)
 
-# Use the models selected by the user
-models = args.models
-query = args.query
-print(f'Selected models: {", ".join(models)}')
-print(f'Query: {query}')
+# Use the models selected by the user if models and query are specified
+if args.models and args.query != '':
+    models = args.models
+    query = args.query
+    print(f'Selected models: {", ".join(models)}')
+    print(f'Query: {query}')
+
+    main.query(models, query)

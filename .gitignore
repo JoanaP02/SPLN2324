@@ -1,4 +1,7 @@
 TP2/__pycache__/
 TP2/dados/dre_database.db
-TP2/dados/2024-04-07-DRE_dump.json
+TP2/dados/DRE_large.json
 TP2/dados/2024-04-07-DRE_dump.sql
+TP2/dados/extracted_data.pkl
+TP2/models/tfidf/
+TP2/models/w2v/

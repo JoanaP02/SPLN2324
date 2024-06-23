@@ -1,14 +1,15 @@
+import os
 import sqlite3
 import pandas as pd
 from gensim.models import TfidfModel, Word2Vec
 from gensim.corpora import Dictionary
 from gensim.similarities import SparseMatrixSimilarity, WmdSimilarity
-from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
 from gensim.utils import tokenize
-from transformers import pipeline
+import torch
+from transformers import pipeline, AutoTokenizer, AutoModelForMaskedLM
 import nltk
 import ijson
+import pickle
 import basedados
 
 # Carregar stopwords
@@ -70,80 +71,88 @@ def create_database():
 
 def create_models(models):
     import modelos
-    if 'tfidf' in models:
-        modelos.create_tfidf_model()
-    if 'word2vec' in models:
-        modelos.create_word2vec_model()
+    # Existe extracted_data.pkl?
+    if not os.path.exists('dados/extracted_data.pkl'):
+        modelos.save_extracted_data()
+    # If tfidf or word2vec in models, get sentences
+    if 'tfidf' in models or 'word2vec' in models:
+        sentences = modelos.main()
+        if 'tfidf' in models:
+            modelos.create_tfidf_model(sentences)
+        if 'word2vec' in models:
+            modelos.create_word2vec_model(sentences)
+            modelos.create_word2vec_index(sentences)
     if 'bert' in models:
         modelos.create_bert_model()
 
-def main():
-    # Carregar stopwords
-    nltk.download('stopwords')
-    stopwords = nltk.corpus.stopwords.words('portuguese')
-
-    # Parâmetro para ativar ou desativar BERT
-    use_bert = True # Defina como True para usar BERT
-
-    # Ler o arquivo JSON
-    filename = "dados/DRE_large.json"
-    print("A ler o ficheiro JSON item a item...")
-    extracted_data = extract_items(filename)
-
-
-    # Preparar dados para o modelo
-    print("Preparando dados para o modelo...")
+def query(models, query):
+    # Load extracted_data from a pickle file
+    print("Carregando dados extraídos do arquivo pickle...")
+    with open('dados/extracted_data.pkl', 'rb') as f:
+        extracted_data = pickle.load(f)
     notes = list(extracted_data.values())
-    sentences = [preprocess(note) for note in notes]
-
-    # Preparar dados para o modelo TF-IDF
-    print("Preparando modelo TF-IDF...")
-    dictionary = Dictionary(sentences)
-    corpus_bow = [dictionary.doc2bow(sent) for sent in sentences]
-    tfidf_model = TfidfModel(corpus_bow, normalize=True)
-    index_tfidf = SparseMatrixSimilarity(tfidf_model[corpus_bow], num_docs=len(corpus_bow), num_terms=len(dictionary))
-
-    # Preparar dados para o modelo Word2Vec
-    print("Preparando modelo Word2Vec...")
-    model_w2v = Word2Vec.load("models/dre_w2v.model").wv
-    model_w2v.init_sims(replace=True)
-    doc_index_w2v = WmdSimilarity(sentences, model_w2v, num_best=10)
-
-    # Carregar modelo SentenceTransformer
-    if use_bert:
-        print("Carregando modelo SentenceTransformer BERT...")
-        model_bert = SentenceTransformer('neuralmind/bert-base-portuguese-cased')
 
     # Query
-    query = "Comida para animais de estimação"
     query_tokens = preprocess(query)
     query_bow = dictionary.doc2bow(query_tokens)
 
-    # Calcular similaridade com o modelo TF-IDF
-    print("Calculando similaridade com o modelo TF-IDF...")
-    tfidf_query = tfidf_model[query_bow]
-    sims_tfidf = index_tfidf[tfidf_query]
-    sims_tfidf_sorted = sorted(enumerate(sims_tfidf), key=lambda x: x[1], reverse=True)
-    max_sim_index_tfidf = sims_tfidf_sorted[0][0]
-    max_sim_id_tfidf = list(extracted_data.keys())[max_sim_index_tfidf]
-    max_sim_value_tfidf = list(extracted_data.values())[max_sim_index_tfidf]
-    max_sim_tfidf = sims_tfidf_sorted[0][1]
+    # Ver que modelos foram chamados
+    if 'tfidf' in models:
+        # Check if the models are already created
+        if not os.path.exists('models/tfidf/dictionary.dict'):
+            print("Erro: modelo TF-IDF não encontrado. Crie os modelos primeiro.")
+            return
+        # Preparar dados para o modelo TF-IDF
+        from gensim.models import TfidfModel
+        from gensim.similarities import SparseMatrixSimilarity
+        print("Preparando modelo TF-IDF...")
+        dictionary = Dictionary.load('models/tfidf/dictionary.dict')
+        tfidf_model = TfidfModel.load('models/tfidf/tfidf.model')
+        index_tfidf = SparseMatrixSimilarity.load('models/tfidf/index_tfidf.index')
 
-    # Calcular similaridade com o modelo Word2Vec
-    print("Calculando similaridade com o modelo Word2Vec...")
-    sims_w2v = doc_index_w2v[query_tokens]
-    sims_w2v_sorted = sorted(sims_w2v, key=lambda x: x[1], reverse=True)
-    max_sim_index_w2v = sims_w2v_sorted[0][0]
-    max_sim_id_w2v = list(extracted_data.keys())[max_sim_index_w2v]
-    max_sim_value_w2v = list(extracted_data.values())[max_sim_index_w2v]
-    max_sim_w2v = sims_w2v_sorted[0][1]
+        # Calcular similaridade com o modelo TF-IDF
+        print("Calculando similaridade com o modelo TF-IDF...")
+        tfidf_query = tfidf_model[query_bow]
+        sims_tfidf = index_tfidf[tfidf_query]
+        sims_tfidf_sorted = sorted(enumerate(sims_tfidf), key=lambda x: x[1], reverse=True)
+        max_sim_index_tfidf = sims_tfidf_sorted[0][0]
+        max_sim_id_tfidf = list(extracted_data.keys())[max_sim_index_tfidf]
+        max_sim_value_tfidf = list(extracted_data.values())[max_sim_index_tfidf]
+        max_sim_tfidf = sims_tfidf_sorted[0][1]
 
-    # Calcular similaridade com o modelo SentenceTransformer
-    if use_bert:
+    if 'word2vec' in models:
+        # Check if the models are already created
+        if not os.path.exists('models/w2v/doc_index_w2v.index'):
+            print("Erro: modelo Word2Vec não encontrado. Crie os modelos primeiro.")
+            return
+        # Preparar dados para o modelo Word2Vec
+        from gensim.models import Word2Vec
+        from gensim.similarities import WmdSimilarity
+        print("Preparando modelo Word2Vec...")
+        doc_index_w2v = WmdSimilarity.load("models/w2v/doc_index_w2v.index")
+
+        # Calcular similaridade com o modelo Word2Vec
+        print("Calculando similaridade com o modelo Word2Vec...")
+        sims_w2v = doc_index_w2v[query_tokens]
+        sims_w2v_sorted = sorted(sims_w2v, key=lambda x: x[1], reverse=True)
+        max_sim_index_w2v = sims_w2v_sorted[0][0]
+        max_sim_id_w2v = list(extracted_data.keys())[max_sim_index_w2v]
+        max_sim_value_w2v = list(extracted_data.values())[max_sim_index_w2v]
+        max_sim_w2v = sims_w2v_sorted[0][1]
+    
+    if 'bert' in models:
+        # Carregar modelo SentenceTransformer
+        print("Carregando modelo SentenceTransformer BERT...")
+        pipeline = pipeline('feature-extraction', model='neuralmind/bert-base-portuguese-cased')
+
+        # Calcular similaridade com o modelo SentenceTransformer
         print("Calculando similaridade com o modelo SentenceTransformer BERT...")
-        query_embedding = model_bert.encode(query)
-        notes_embeddings = [model_bert.encode(note) for note in notes]
-        similarities = cosine_similarity([query_embedding], notes_embeddings)
+        # Load notes_embeddings from a pickle file
+        with open('models/bert/notes_embeddings.pkl', 'rb') as f:
+            notes_embeddings = pickle.load(f)
+        # Query embedding
+        query_embedding = pipeline(query)[0]
+        similarities = torch.nn.functional.cosine_similarity(query_embedding, torch.stack(notes_embeddings))
         most_similar_index_bert = similarities.argmax()
         most_similar_note_bert = notes[most_similar_index_bert]
         max_sim_id_bert = list(extracted_data.keys())[most_similar_index_bert]
@@ -151,13 +160,9 @@ def main():
         max_sim_bert = similarities[0][most_similar_index_bert]
 
     # Determinar a nota com a maior similaridade entre os três modelos
-    similarities_all = {
-        'TF-IDF': max_sim_tfidf,
-        'Word2Vec': max_sim_w2v,
-    }
-
-    if use_bert:
-        similarities_all['BERT'] = max_sim_bert
+    similarities_all = {}
+    for model, sim in zip(['TF-IDF', 'Word2Vec', 'BERT'], [max_sim_tfidf, max_sim_w2v, max_sim_bert]):
+        similarities_all[model] = sim
 
     best_model = max(similarities_all, key=similarities_all.get)
 
