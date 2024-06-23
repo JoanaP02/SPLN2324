@@ -71,3 +71,9 @@ O modelo BERT apresentou um desempenho mais lento. Para mitigar isso, adicionám
 ### Conclusão
 
 O projeto foi bem-sucedido em integrar diferentes modelos de machine learning para encontrar textos relevantes e aplicar question answering. As técnicas de manipulação de grandes ficheiros e conversão de tipos de dados garantiram a eficiência e robustez do sistema.
+
+### Como utilizar
+
+Antes de utilizar, é necessário criar a base de dados.
+É favor seguir as instruções do [uso_base_de_dados.md](./uso_base_de_dados.md) primeiro.
+Depois, deve seguir as instruções descritas no markdown [uso_programa.md](./uso_programa.md)
