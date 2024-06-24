@@ -35,7 +35,7 @@ def preprocess(line):
     return list(tokens)
 
 def get_text_by_id(document_id):
-    conn = sqlite3.connect('models/dre_database.db')
+    conn = sqlite3.connect('dados/dre_database.db')
     cursor = conn.cursor()
     
     cursor.execute('SELECT text FROM dreapp_documenttext WHERE document_id=?', (document_id,))
@@ -94,7 +94,6 @@ def query(models, query):
 
     # Query
     query_tokens = preprocess(query)
-    query_bow = dictionary.doc2bow(query_tokens)
 
     # Ver que modelos foram chamados
     if 'tfidf' in models:
@@ -109,7 +108,8 @@ def query(models, query):
         dictionary = Dictionary.load('models/tfidf/dictionary.dict')
         tfidf_model = TfidfModel.load('models/tfidf/tfidf.model')
         index_tfidf = SparseMatrixSimilarity.load('models/tfidf/index_tfidf.index')
-
+        query_bow = dictionary.doc2bow(query_tokens)
+        
         # Calcular similaridade com o modelo TF-IDF
         print("Calculando similaridade com o modelo TF-IDF...")
         tfidf_query = tfidf_model[query_bow]
@@ -161,8 +161,12 @@ def query(models, query):
 
     # Determinar a nota com a maior similaridade entre os três modelos
     similarities_all = {}
-    for model, sim in zip(['TF-IDF', 'Word2Vec', 'BERT'], [max_sim_tfidf, max_sim_w2v, max_sim_bert]):
-        similarities_all[model] = sim
+    if 'tfidf' in models:
+        similarities_all['TF-IDF'] = max_sim_tfidf
+    if 'word2vec' in models:
+        similarities_all['Word2Vec'] = max_sim_w2v
+    if 'bert' in models:
+        similarities_all['BERT'] = max_sim_bert
 
     best_model = max(similarities_all, key=similarities_all.get)
 
@@ -199,6 +203,7 @@ def query(models, query):
         print(f"Buscando texto para o ID {internal_id} na base de dados...")
         # Buscar o texto na base de dados usando o ID mapeado
         text = get_text_by_id(internal_id)
+        print(text)
         results.append(f"### Texto Selecionado (ID {internal_id}):\n{text}\n")
     else:
         results.append(f"**ID {external_id} não encontrado no mapeamento.**\n")
