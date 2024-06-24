@@ -1,6 +1,5 @@
 import sys
 import argparse
-import main
 
 # Define the available models
 available_models = ['tfidf', 'word2vec', 'bert']
@@ -25,28 +24,39 @@ parser.add_argument('-m', '--models', nargs='+', default=available_models, help=
 # Parse the arguments
 args = parser.parse_args()
 
+# Import the main module only if its necessary
+# This way, the user can list the available models without importing the module
+
+
 # If --list_models is specified, print the available models and exit
 if args.list_models:
-    if vars(args) != {'query': args.query, 'create_database': False, 'create_models': available_models, 'list_models': True, 'models': available_models}:  # Check if any other argument was specified
+    
+    if vars(args) != {'query': args.query, 'create_database': False, 'create_models': None, 'list_models': True, 'models': available_models}:  # Check if any other argument was specified
         print('Error: Cannot use --list_models with other arguments')
         sys.exit()
-    print('Available models:', ', '.join(available_models))
+    print('\nAvailable models:', ', '.join(available_models))
+    print('\n')
     sys.exit()
 
-# If --create_database is specified, create the database and exit
-if args.create_database:
-    main.create_database()
 
-# If --create_models is specified, create the models and exit
-if args.create_models:
-    models = args.create_models
-    main.create_models(models)
+elif args.create_database or args.create_models or args.query != '' or args.models:
+    
+    import main
 
-# Use the models selected by the user if models and query are specified
-if args.models and args.query != '':
-    models = args.models
-    query = args.query
-    print(f'Selected models: {", ".join(models)}')
-    print(f'Query: {query}')
+    # If --create_database is specified, create the database and exit
+    if args.create_database:
+        main.create_database()
 
-    main.query(models, query)
+    # If --create_models is specified, create the models and exit
+    if args.create_models:
+        models = args.create_models
+        main.create_models(models)
+
+    # Use the models selected by the user if models and query are specified
+    if args.models and args.query != '':
+        models = args.models
+        query = args.query
+        print(f'Selected models: {", ".join(models)}')
+        print(f'Query: {query}')
+
+        main.query(models, query)
