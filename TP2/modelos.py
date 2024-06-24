@@ -13,7 +13,7 @@ def extract_items(json_file_path):
 
 def save_extracted_data():
     # Ler o arquivo JSON
-    filename = "dados/DRE_small.json"
+    filename = "dados/DRE_large.json"
     print("A ler o ficheiro JSON item a item...")
     extracted_data = extract_items(filename)
 
